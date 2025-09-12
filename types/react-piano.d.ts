@@ -1,3 +1,6 @@
+// src/types/react-piano.d.ts (or wherever you keep it)
+import * as React from 'react';
+
 declare module 'react-piano' {
   export interface NoteRange {
     first: number;
@@ -8,11 +11,34 @@ declare module 'react-piano' {
     noteRange: NoteRange;
     playNote: (midiNumber: number) => void;
     stopNote: (midiNumber: number) => void;
+
+    /** Canvas width in px */
     width?: number;
-    keyboardShortcuts?: any;
+
+    /** Disable interaction */
     disabled?: boolean;
+
+    /** Keyboard mapping helpers */
+    keyboardShortcuts?: any;
+
+    /** Key width/height ratio */
     keyWidthToHeight?: number;
-    renderNoteLabel?: (props: { midiNumber: number; isActive: boolean; isAccidental: boolean }) => React.ReactNode;
+
+    /**
+     * Custom label renderer for a key.
+     * `isActive` is optional so your function can ignore it without TS errors.
+     */
+    renderNoteLabel?: (props: {
+      midiNumber: number;
+      isAccidental: boolean;
+      isActive?: boolean;
+    }) => React.ReactNode;
+
+    /**
+     * MIDI numbers to visually highlight (e.g., guided playback).
+     * Many versions support this at runtime but the types omit it — we add it here.
+     */
+    activeNotes?: number[];
   }
 
   export const Piano: React.FC<PianoProps>;
@@ -33,6 +59,7 @@ declare module 'react-piano' {
       lastNote: number;
       keyboardConfig: any;
     }): any;
+
     static HOME_ROW: any;
   }
 }
