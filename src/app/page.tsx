@@ -1,5 +1,6 @@
 'use client'
 import { useState, FormEvent, useEffect, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 
 export default function Home() {
   const [input, setInput] = useState('')
@@ -8,13 +9,13 @@ export default function Home() {
   const [isError, setIsError] = useState(false)
   const [isShaking, setIsShaking] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+  const router = useRouter()
 
-  const correctAnswer = "42" // Change this to whatever answer you want
+  const correctAnswer = "42"
 
   // Trigger the initial fade-in and focus after component mounts
   useEffect(() => {
     setShowInitial(true)
-    // Focus the input after a short delay to ensure it's visible
     setTimeout(() => {
       inputRef.current?.focus()
     }, 100)
@@ -27,6 +28,15 @@ export default function Home() {
     }
   }, [isError, isShaking])
 
+  // Navigate to piano page after success animation
+  useEffect(() => {
+    if (isCorrect) {
+      setTimeout(() => {
+        router.push('/piano')
+      }, 1500) // Wait for success message to show
+    }
+  }, [isCorrect, router])
+
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     
@@ -36,7 +46,6 @@ export default function Home() {
       } else {
         setIsError(true)
         setIsShaking(true)
-        // Reset everything after shake animation
         setTimeout(() => {
           setIsShaking(false)
           setIsError(false)
@@ -86,6 +95,9 @@ export default function Home() {
         <h1 className="text-4xl font-bold text-green-600">
           You got it right!
         </h1>
+        <p className="text-center text-gray-600 mt-2">
+          Taking you to the piano...
+        </p>
       </div>
     </div>
   )
