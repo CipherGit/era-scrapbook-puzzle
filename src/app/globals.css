@@ -35,3 +35,26 @@ body {
 .animate-shake {
   animation: shake 0.6s ease-in-out;
 }
+
+.ReactPiano {
+  width: 800px !important;
+  height: 200px !important;
+}
+
+.ReactPiano__Key {
+  border: 1px solid #ccc !important;
+}
+
+.ReactPiano__Key--white {
+  background-color: white !important;
+  height: 200px !important;
+}
+
+.ReactPiano__Key--black {
+  background-color: black !important;
+  height: 120px !important;
+}
+
+.ReactPiano__Key--active {
+  background-color: #007bff !important;
+}
