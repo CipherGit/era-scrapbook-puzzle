@@ -21,14 +21,11 @@ export default function PianoPage() {
       // Create a sampler with piano samples
       const pianoSampler = new Sampler({
         urls: {
+          C3: "https://tonejs.github.io/audio/salamander/C3.mp3",
+          "D#3": "https://tonejs.github.io/audio/salamander/Ds3.mp3",
+          "F#3": "https://tonejs.github.io/audio/salamander/Fs3.mp3",
+          A3: "https://tonejs.github.io/audio/salamander/A3.mp3",
           C4: "https://tonejs.github.io/audio/salamander/C4.mp3",
-          "D#4": "https://tonejs.github.io/audio/salamander/Ds4.mp3",
-          "F#4": "https://tonejs.github.io/audio/salamander/Fs4.mp3",
-          A4: "https://tonejs.github.io/audio/salamander/A4.mp3",
-          C5: "https://tonejs.github.io/audio/salamander/C5.mp3",
-          "D#5": "https://tonejs.github.io/audio/salamander/Ds5.mp3",
-          "F#5": "https://tonejs.github.io/audio/salamander/Fs5.mp3",
-          A5: "https://tonejs.github.io/audio/salamander/A5.mp3",
         },
         release: 1,
         baseUrl: "",
@@ -54,13 +51,9 @@ export default function PianoPage() {
     }
   }, [])
 
-  const firstNote = MidiNumbers.fromNote('c4')
-  const lastNote = MidiNumbers.fromNote('c6')
-  const keyboardShortcuts = KeyboardShortcuts.create({
-    firstNote: firstNote,
-    lastNote: lastNote,
-    keyboardConfig: KeyboardShortcuts.HOME_ROW,
-  })
+  // Changed to C3-C4 (one octave)
+  const firstNote = MidiNumbers.fromNote('c3')
+  const lastNote = MidiNumbers.fromNote('c4')
 
   const playNote = async (midiNumber: number) => {
     if (sampler && context.state !== 'running') {
@@ -98,29 +91,26 @@ export default function PianoPage() {
         <div className="animate-pulse">Loading piano sounds...</div>
       </div>
 
-      {/* Piano container - always present */}
-      <div className={`bg-white rounded-lg shadow-2xl p-6 transition-all duration-1000 delay-700 ${
+      {/* Piano container - no keyboard shortcuts */}
+      <div className={`bg-white rounded-lg shadow-2xl px-8 py-16 transition-all duration-1000 delay-700 ${
         !isLoading && showContent ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-8 scale-95'
       }`}>
-        <div style={{ width: '800px', height: '200px' }}>
+        <div style={{ width: '600px', height: '200px' }}>
           <Piano
             noteRange={{ first: firstNote, last: lastNote }}
             playNote={playNote}
             stopNote={stopNote}
-            width={800}
-            keyboardShortcuts={keyboardShortcuts}
-            disabled={isLoading} // Disable interaction while loading
+            width={600}
+            disabled={isLoading}
           />
         </div>
       </div>
       
+      {/* Simplified instructions */}
       <p className={`mt-6 text-gray-600 text-center transition-all duration-800 delay-1000 ${
         !isLoading && showContent ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'
       }`}>
-        <>
-          Click the keys or use your keyboard to play!<br />
-          <span className="text-sm">Keyboard shortcuts: A S D F G H J K L</span>
-        </>
+        Click the keys to play!
       </p>
     </div>
   )

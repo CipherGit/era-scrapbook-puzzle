@@ -37,7 +37,7 @@ body {
 }
 
 .ReactPiano {
-  width: 800px !important;
+  width: 600px !important;
   height: 200px !important;
 }
 
@@ -51,7 +51,7 @@ body {
 }
 
 .ReactPiano__Key--black {
-  background-color: black !important;
+  background-color: #333 !important;
   height: 120px !important;
 }
 
