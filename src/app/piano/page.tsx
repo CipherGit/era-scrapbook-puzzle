@@ -9,6 +9,12 @@ export default function PianoPage() {
   const [sampler, setSampler] = useState<Sampler | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [showContent, setShowContent] = useState(false)
+  const [playedNotes, setPlayedNotes] = useState<string[]>([])
+  const [isError, setIsError] = useState(false)
+  const [isFadingOut, setIsFadingOut] = useState(false)
+
+  // The target sequence: C-A-B-B-A-G-E for "CABBAGE"
+  const targetSequence = ['C', 'A', 'B', 'B', 'A', 'G', 'E']
 
   // Show content after component mounts
   useEffect(() => {
@@ -63,8 +69,35 @@ export default function PianoPage() {
     if (sampler) {
       const noteAttributes = MidiNumbers.getAttributes(midiNumber)
       const noteName = `${noteAttributes.pitchName}${noteAttributes.octave}`
+      const noteOnly = noteAttributes.pitchName // Just the note letter (C, D, E, etc.)
+      
       sampler.triggerAttack(noteName)
-      console.log('Playing note:', noteName)
+      
+      // Check if this note matches the expected next note in sequence
+      const expectedNote = targetSequence[playedNotes.length]
+      
+      if (noteOnly === expectedNote) {
+        // Correct note! Add it to the sequence
+        setPlayedNotes(prev => [...prev, noteOnly])
+      } else {
+        // Wrong note! Add it, flash red, then fade out and reset
+        setPlayedNotes(prev => [...prev, noteOnly])
+        setIsError(true)
+        
+        // Start fade out after showing error
+        setTimeout(() => {
+          setIsFadingOut(true)
+        }, 700) // Show red for 0.7 seconds
+        
+        // Complete reset after fade out
+        setTimeout(() => {
+          setIsError(false)
+          setIsFadingOut(false)
+          setPlayedNotes([])
+        }, 1000) // Total 1 second (0.7s red + 0.3s fade out)
+      }
+      
+      console.log('Playing note:', noteOnly)
     }
   }
 
@@ -75,6 +108,10 @@ export default function PianoPage() {
       sampler.triggerRelease(noteName)
     }
   }
+
+  // Check if current sequence is correct so far
+  const isSequenceCorrect = playedNotes.length > 0 && 
+    playedNotes.every((note, index) => note === targetSequence[index])
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 p-8">
@@ -91,7 +128,7 @@ export default function PianoPage() {
         <div className="animate-pulse">Loading piano sounds...</div>
       </div>
 
-      {/* Piano container - no keyboard shortcuts */}
+      {/* Piano container */}
       <div className={`bg-white rounded-lg shadow-2xl px-8 py-16 transition-all duration-1000 delay-700 ${
         !isLoading && showContent ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-8 scale-95'
       }`}>
@@ -106,12 +143,32 @@ export default function PianoPage() {
         </div>
       </div>
       
-      {/* Simplified instructions */}
-      <p className={`mt-6 text-gray-600 text-center transition-all duration-800 delay-1000 ${
+      {/* Notes display */}
+      <div className={`mt-8 text-center transition-all duration-800 delay-1000 ${
         !isLoading && showContent ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'
       }`}>
-        Click the keys to play!
-      </p>
+        <div className={`text-4xl font-bold mb-4 min-h-[3rem] transition-all duration-300 ${
+          isFadingOut 
+            ? 'opacity-0 transform translate-y-2' 
+            : 'opacity-100 transform translate-y-0'
+        } ${
+          isError ? 'text-red-500' : isSequenceCorrect ? 'text-green-600' : 'text-gray-800'
+        }`}>
+          {playedNotes.map((note, index) => (
+            <span 
+              key={`${note}-${index}`}
+              className="inline-block animate-fade-in-note"
+              style={{ animationDelay: `${index * 50}ms` }} // Changed from 100ms to 50ms
+            >
+              {note}
+            </span>
+          ))}
+        </div>
+        
+        <p className="text-gray-600">
+          Click the keys to play!
+        </p>
+      </div>
     </div>
   )
 }
