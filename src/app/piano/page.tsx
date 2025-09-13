@@ -1,9 +1,12 @@
+// src/app/piano/page.tsx
 'use client';
+
 import { useEffect, useMemo, useRef, useState } from 'react';
 // @ts-ignore
 import { Piano, KeyboardShortcuts, MidiNumbers } from 'react-piano';
 import 'react-piano/dist/styles.css';
 import { Sampler, start, loaded, context } from 'tone';
+import { caveat } from '../fonts'; // Caveat (400/700) from src/app/fonts.ts
 
 const TARGET_SEQUENCE = ['C', 'A', 'B', 'B', 'A', 'G', 'E']; // CABBAGE
 
@@ -19,10 +22,10 @@ const SAMPLE_URLS: Record<string, string> = {
 export default function PianoPage() {
   const [sampler, setSampler] = useState<Sampler | null>(null);
   const samplerRef = useRef<Sampler | null>(null);
-  const [windowWidth, setWindowWidth] = useState<number>(600); // Default fallback
+  const [windowWidth, setWindowWidth] = useState<number>(600);
 
   const [isLoading, setIsLoading] = useState(true);
-  const [showContent, setShowContent] = useState(false);
+  const [showContent, setShowContent] = useState(false); // flip right after loading
   const [playedNotes, setPlayedNotes] = useState<string[]>([]);
   const [isError, setIsError] = useState(false);
   const [isFadingOut, setIsFadingOut] = useState(false);
@@ -36,7 +39,7 @@ export default function PianoPage() {
 
   const APPEND_ON_ERROR = true;
 
-  // Track timeouts to clear on unmount
+  // timeouts cleanup
   const timeouts = useRef<number[]>([]);
   const pushTimeout = (cb: () => void, ms: number) => {
     const id = window.setTimeout(cb, ms);
@@ -44,34 +47,21 @@ export default function PianoPage() {
     return id;
   };
 
-  // Handle window resize for responsive piano
+  // responsive width
   useEffect(() => {
-    const handleResize = () => {
-      setWindowWidth(window.innerWidth);
-    };
-
-    // Set initial width
-    if (typeof window !== 'undefined') {
-      setWindowWidth(window.innerWidth);
-      window.addEventListener('resize', handleResize);
-    }
-
-    return () => {
-      if (typeof window !== 'undefined') {
-        window.removeEventListener('resize', handleResize);
-      }
-    };
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    setWindowWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Calculate piano width based on screen size and orientation
   const pianoWidth = useMemo(() => {
-    // Always use constrained width approach
-    const padding = 64; // Account for container padding + piano container padding
-    const maxWidth = Math.min(windowWidth - padding, 500); // Reduced max width for better constraint
-    return Math.max(maxWidth, 280); // Minimum 280px for usability
+    const padding = 64;
+    const maxWidth = Math.min(windowWidth - padding, 500);
+    return Math.max(maxWidth, 280);
   }, [windowWidth]);
 
-  // Piano range & shortcuts
+  // note range & shortcuts
   const firstNote = useMemo(() => MidiNumbers.fromNote('c3'), []);
   const lastNote = useMemo(() => MidiNumbers.fromNote('c4'), []);
   const keyboardShortcuts = useMemo(
@@ -88,12 +78,9 @@ export default function PianoPage() {
     playedNotes.length > 0 &&
     playedNotes.every((note, index) => note === TARGET_SEQUENCE[index]);
 
-  // Initialize audio and entrance animations
+  // init audio; reveal content AFTER loading completes
   useEffect(() => {
     let mounted = true;
-
-    // Show content first, but keep loading state
-    pushTimeout(() => setShowContent(true), 100);
 
     const initializeSampler = async () => {
       const pianoSampler = new Sampler({
@@ -110,18 +97,20 @@ export default function PianoPage() {
 
       samplerRef.current = pianoSampler;
       setSampler(pianoSampler);
-      // Give a bit more time to show the loading state
-      pushTimeout(() => setIsLoading(false), 800);
+
+      // loading finished
+      setIsLoading(false);
+
+      // next tick: flip showContent so existing sections can animate from opacity-0 -> 100
+      requestAnimationFrame(() => setShowContent(true));
     };
 
     initializeSampler();
 
     return () => {
       mounted = false;
-      // Clear pending timeouts
       timeouts.current.forEach((id) => clearTimeout(id));
       timeouts.current = [];
-      // Dispose sampler
       samplerRef.current?.dispose();
       samplerRef.current = null;
     };
@@ -138,12 +127,10 @@ export default function PianoPage() {
   };
 
   const playSequence = async (notes: string[], delay = 500) => {
-    // Ensure audio context is running
     if (context.state !== 'running') {
       try {
         await start();
-      } catch (error) {
-        console.warn('Failed to start audio context for sequence:', error);
+      } catch {
         return;
       }
     }
@@ -155,12 +142,9 @@ export default function PianoPage() {
       const midiNumber = MidiNumbers.fromNote(noteWithOctave.toLowerCase());
 
       setActivePlaybackNote(midiNumber);
-      
       try {
         samplerRef.current.triggerAttackRelease(noteWithOctave, '4n');
-      } catch (error) {
-        console.warn('Failed to play sequence note:', error);
-      }
+      } catch {}
 
       if (i < notes.length - 1) {
         await new Promise((resolve) => {
@@ -175,18 +159,12 @@ export default function PianoPage() {
 
   const handleWin = async () => {
     setIsPlayingBack(true);
-
     pushTimeout(async () => {
       await playSequence(TARGET_SEQUENCE);
-
-      // Fade out the piano/UI
       pushTimeout(() => {
         setFadeOutAll(true);
-
-        // After piano fade (matches duration-1000 on the piano container)
         pushTimeout(() => {
           setIsWon(true);
-          // Tiny delay so the win box mounts at opacity-0 then transitions to opacity-100
           pushTimeout(() => setShowWinContent(true), 20);
         }, 1000);
       }, 500);
@@ -196,35 +174,29 @@ export default function PianoPage() {
   const playNote = async (midiNumber: number) => {
     if (!samplerRef.current || isPlayingBack) return;
 
-    // Ensure audio context is running on first interaction
     if (context.state !== 'running') {
       try {
         await start();
         setAudioInitialized(true);
-      } catch (error) {
-        console.warn('Failed to start audio context:', error);
+      } catch {
         return;
       }
     }
 
     const attrs = MidiNumbers.getAttributes(midiNumber);
-    const noteName = `${attrs.pitchName}${attrs.octave}`; // e.g., "C3"
-    const pitchOnly = attrs.pitchName; // e.g., "C"
+    const noteName = `${attrs.pitchName}${attrs.octave}`;
+    const pitchOnly = attrs.pitchName;
 
     try {
       samplerRef.current.triggerAttack(noteName);
-    } catch (error) {
-      console.warn('Failed to play note:', error);
-    }
+    } catch {}
 
     const expected = TARGET_SEQUENCE[playedNotes.length];
 
     if (pitchOnly === expected) {
       const newNotes = [...playedNotes, pitchOnly];
       setPlayedNotes(newNotes);
-      if (newNotes.length === TARGET_SEQUENCE.length) {
-        handleWin();
-      }
+      if (newNotes.length === TARGET_SEQUENCE.length) handleWin();
     } else {
       if (APPEND_ON_ERROR) setPlayedNotes((prev) => [...prev, pitchOnly]);
       handleError();
@@ -237,20 +209,17 @@ export default function PianoPage() {
     const noteName = `${attrs.pitchName}${attrs.octave}`;
     try {
       samplerRef.current.triggerRelease(noteName);
-    } catch (error) {
-      console.warn('Failed to stop note:', error);
-    }
+    } catch {}
   };
 
   const renderNoteLabel = ({ midiNumber, isAccidental }: any) => {
-    // Hide hints during playback and after win
     if (!showHints || isPlayingBack || isWon) return null;
     const attrs = MidiNumbers.getAttributes(midiNumber);
     return (
       <span
         style={{
           color: isAccidental ? 'white' : 'black',
-          fontSize: pianoWidth < 400 ? '10px' : '12px', // Smaller font on mobile
+          fontSize: pianoWidth < 400 ? '10px' : '12px',
           fontWeight: 'bold',
           userSelect: 'none',
         }}
@@ -263,31 +232,60 @@ export default function PianoPage() {
   const getDisplayColor = () => {
     if (isError) return 'text-red-500';
     if (isSequenceCorrect) return 'text-green-600';
-    return 'text-gray-800';
+    return 'text-[#5c4033]';
   };
 
+  // helper: returns classes for visible vs hidden state
+  const appear = (visible: boolean) =>
+    `transition-all ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5 pointer-events-none'}`;
+
+  const showNow = showContent && !fadeOutAll; // once content is allowed to show, and not fading out
+
   return (
-    <div className="relative min-h-screen bg-gray-100 p-4 sm:p-8 flex items-center justify-center">
+    <div className="relative min-h-screen bg-kraft-css p-4 sm:p-8 flex items-center justify-center overflow-x-hidden">
       <div className="max-w-2xl mx-auto space-y-6 w-full">
-        
-        {/* 1. Header Text - First to appear (2 lines) */}
-        <div
-          className={`text-center transition-all duration-700 ${
-            showContent && !fadeOutAll ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'
-          }`}
-        >
-          <h1 className="text-2xl sm:text-4xl font-bold text-gray-800 leading-tight">
-            ASK for the KEY<br />within the Pages!
-          </h1>
+
+        {/* Loading Overlay */}
+        {isLoading && (
+          <div className="fixed inset-0 flex items-center justify-center bg-[#f4e1c6]/90 z-50">
+            <div className="bg-paper-card-css rounded-xl p-8 text-center max-w-md mx-4 ring-1 ring-[#d2b48c]/60 shadow-[10px_12px_0_#c7b08a]">
+              <div className="flex items-center justify-center gap-3 text-[#6b4f3a] mb-4">
+                <svg className="animate-spin h-8 w-8" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                <span className="text-xl font-semibold">Loading Piano Sounds</span>
+              </div>
+              <p className="text-[#6b4f3a] mb-2">Preparing your musical adventure...</p>
+              <p className="text-sm text-[#9c8063]">This may take a moment</p>
+            </div>
+          </div>
+        )}
+
+        {/* Header (Caveat) — perfectly centered two lines */}
+        <div className={`${appear(showNow)} duration-500 flex justify-center`} aria-hidden={!showNow}>
+          <div className="inline-block text-center">
+            <span className={`${caveat.className} block text-4xl sm:text-6xl font-bold text-[#5c4033] leading-tight`}>
+              ASK for the KEY
+            </span>
+            <span className={`${caveat.className} block text-4xl sm:text-6xl font-bold text-[#5c4033] leading-tight`}>
+              within the Pages!
+            </span>
+          </div>
         </div>
 
-        {/* 2. Note Sequence Card - Second to appear */}
-        <div
-          className={`transition-all duration-700 delay-300 ${
-            showContent && !fadeOutAll ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'
-          }`}
-        >
-          <div className="bg-white rounded-xl shadow-lg p-6 min-h-[100px] flex items-center justify-center">
+        {/* Sequence Card */}
+        <div className={`${appear(showNow)} duration-700 delay-300`} aria-hidden={!showNow}>
+          <div
+            className="
+              relative bg-paper-card-css rounded-xl p-6 min-h-[100px]
+              flex items-center justify-center
+              ring-1 ring-[#d2b48c]/60
+              shadow-[8px_10px_0_#c7b08a] sm:shadow-[10px_12px_0_#c7b08a] md:shadow-[12px_14px_0_#c7b08a]
+            "
+          >
+            {/* small corner tape */}
+            <div className="tape pointer-events-none absolute -top-4 left-6 w-20 h-5 rotate-[-8deg]" />
             {!isWon ? (
               <div
                 className={`text-center transition-all duration-300 ${
@@ -307,7 +305,7 @@ export default function PianoPage() {
                       </span>
                     ))
                   ) : (
-                    <span className="text-gray-400 text-xl">Your sequence will appear here...</span>
+                    <span className="text-[#9c8063] text-xl">Your sequence will appear here...</span>
                   )}
                 </div>
               </div>
@@ -315,44 +313,17 @@ export default function PianoPage() {
           </div>
         </div>
 
-        {/* Enhanced Loading State - Replaces the old loading message */}
-        {isLoading && (
-          <div className="fixed inset-0 flex items-center justify-center bg-gray-100 bg-opacity-95 z-50">
-            <div className="bg-white rounded-xl shadow-lg p-8 text-center max-w-md mx-4">
-              <div className="flex items-center justify-center gap-3 text-blue-600 mb-4">
-                <svg className="animate-spin h-8 w-8" viewBox="0 0 24 24">
-                  <circle 
-                    className="opacity-25" 
-                    cx="12" 
-                    cy="12" 
-                    r="10" 
-                    stroke="currentColor" 
-                    strokeWidth="4" 
-                    fill="none"
-                  />
-                  <path 
-                    className="opacity-75" 
-                    fill="currentColor" 
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                  />
-                </svg>
-                <span className="text-xl font-semibold">Loading Piano Sounds</span>
-              </div>
-              <p className="text-gray-600 mb-2">Preparing your musical adventure...</p>
-              <p className="text-sm text-gray-500">This may take a moment</p>
-            </div>
-          </div>
-        )}
-
-        {/* 3. Piano - Third to appear (with card effects) */}
-        <div
-          className={`transition-all duration-1000 delay-700 ${
-            !isLoading && showContent && !fadeOutAll
-              ? 'opacity-100 translate-y-0 scale-100'
-              : 'opacity-0 translate-y-8 scale-95'
-          }`}
-        >
-          <div className="bg-white rounded-xl shadow-lg py-6 sm:py-12 px-4 sm:px-6">
+        {/* Piano Card */}
+        <div className={`${appear(showNow)} duration-1000 delay-700`} aria-hidden={!showNow}>
+          <div
+            className="
+              relative bg-paper-card-css rounded-xl py-6 sm:py-12 px-4 sm:px-6
+              ring-1 ring-[#d2b48c]/60
+              shadow-[8px_10px_0_#c7b08a] sm:shadow-[10px_12px_0_#c7b08a] md:shadow-[12px_14px_0_#c7b08a]
+            "
+          >
+            {/* small corner tape */}
+            <div className="tape pointer-events-none absolute -top-4 left-6 w-20 h-5 rotate-[-8deg]" />
             <div className="flex justify-center">
               <div style={{ width: pianoWidth, height: pianoWidth < 400 ? 150 : 200 }}>
                 <Piano
@@ -370,34 +341,26 @@ export default function PianoPage() {
           </div>
         </div>
 
-        {/* 4. Instructions - Fourth to appear (2 lines with emoji) */}
+        {/* Instructions */}
         {!isWon && (
-          <div
-            className={`text-center transition-all duration-700 delay-1000 ${
-              !isLoading && showContent && !fadeOutAll ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'
-            }`}
-          >
-            <p className="text-sm sm:text-base text-gray-600 mb-4 leading-relaxed">
-              {isPlayingBack 
-                ? '🎵 Playing back your success!' 
-                : (
-                  <>
-                    🔊 Click on the keys to play<br />
-                    and make sure to turn on your audio!
-                  </>
-                )
-              }
+          <div className={`${appear(showNow)} duration-700 delay-1000 text-center`} aria-hidden={!showNow}>
+            <p className="text-sm sm:text-base text-[#6b4f3a] mb-4 leading-relaxed">
+              {isPlayingBack ? (
+                '🎵 Playing back your success!'
+              ) : (
+                <>
+                  🔊 Click on the keys to play
+                  <br />
+                  and make sure to turn on your audio!
+                </>
+              )}
             </p>
           </div>
         )}
 
-        {/* 5. Show Hints Button - Fifth to appear */}
+        {/* Show Hints */}
         {!isWon && !isPlayingBack && (
-          <div
-            className={`text-center transition-all duration-700 delay-1200 ${
-              !isLoading && showContent && !fadeOutAll ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'
-            }`}
-          >
+          <div className={`${appear(showNow)} duration-700 delay-1200 text-center`} aria-hidden={!showNow}>
             <button
               onClick={() => setShowHints((v) => !v)}
               className={`px-3 sm:px-4 py-2 rounded-2xl font-semibold transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 text-sm sm:text-base ${
@@ -407,26 +370,28 @@ export default function PianoPage() {
               }`}
               aria-pressed={showHints}
               aria-label={showHints ? 'Hide note labels' : 'Show note labels'}
+              disabled={!showNow}
             >
               {showHints ? 'Hide Hints' : 'Show Hints'}
             </button>
-            <p className="text-xs sm:text-sm text-gray-500 mt-2">
-              Toggle between keyboard shortcuts and note names!
-            </p>
+            <p className="text-xs sm:text-sm text-[#9c8063] mt-2">Toggle between keyboard shortcuts and note names!</p>
           </div>
         )}
 
-        {/* Win screen — centered overlay; fades in after piano fades out */}
+        {/* Win screen */}
         {isWon && (
           <div className="fixed inset-0 flex items-center justify-center p-4 z-50">
             <div
-              className={`bg-green-100 rounded-2xl p-6 sm:p-8 max-w-md mx-auto shadow-2xl text-center transition-all duration-1000 ${
-                showWinContent ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-3 scale-95'
-              }`}
+              className={`bg-paper-card-css rounded-2xl p-6 sm:p-8 max-w-md mx-auto ring-1 ring-[#d2b48c]/60
+                          shadow-[12px_14px_0_#c7b08a] sm:shadow-[14px_16px_0_#c7b08a] md:shadow-[16px_18px_0_#c7b08a]
+                          text-center transition-all duration-1000 relative
+                          ${showWinContent ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-3 scale-95'}`}
             >
+              <div className="tape pointer-events-none absolute -top-6 left-10 w-40 h-7 rotate-[-8deg]" />
+              <div className="tape pointer-events-none absolute -top-7 right-10 w-48 h-7 rotate-[6deg]" />
               <div className="text-4xl sm:text-6xl mb-4">🎉🥬🎉</div>
-              <h2 className="text-2xl sm:text-3xl font-bold text-green-800 mb-4">Congratulations!</h2>
-              <p className="text-sm sm:text-base text-green-700 mb-6">
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-[#2f6f3e] mb-4">Congratulations!</h2>
+              <p className="text-sm sm:text-base text-[#5c4033] mb-6">
                 You successfully played the secret sequence and spelled &quot;CABBAGE&quot;!
               </p>
             </div>
