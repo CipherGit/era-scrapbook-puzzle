@@ -265,8 +265,8 @@ export default function PianoPage() {
   };
 
   return (
-    <div className="relative min-h-screen bg-gray-100 p-4 sm:p-8">
-      <div className="max-w-2xl mx-auto space-y-6">
+    <div className="relative min-h-screen bg-gray-100 p-4 sm:p-8 flex items-center justify-center">
+      <div className="max-w-2xl mx-auto space-y-6 w-full">
         
         {/* 1. Header Text - First to appear (2 lines) */}
         <div
@@ -328,7 +328,7 @@ export default function PianoPage() {
               : 'opacity-0 translate-y-8 scale-95'
           }`}
         >
-          <div className="bg-white rounded-xl shadow-lg py-8 sm:py-16 px-4 sm:px-8">
+          <div className="bg-white rounded-xl shadow-lg py-6 sm:py-12 px-4 sm:px-6">
             <div className="flex justify-center">
               <div style={{ width: pianoWidth, height: pianoWidth < 400 ? 150 : 200 }}>
                 <Piano
