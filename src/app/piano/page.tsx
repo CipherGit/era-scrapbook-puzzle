@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-// @ts-ignore
+// If you haven't added a type shim for react-piano, consider adding one (see earlier message).
 import { Piano, KeyboardShortcuts, MidiNumbers } from 'react-piano';
 import 'react-piano/dist/styles.css';
 import { Sampler, start, loaded, context } from 'tone';
@@ -20,7 +20,6 @@ const SAMPLE_URLS: Record<string, string> = {
 };
 
 export default function PianoPage() {
-  const [sampler, setSampler] = useState<Sampler | null>(null);
   const samplerRef = useRef<Sampler | null>(null);
   const [windowWidth, setWindowWidth] = useState<number>(600);
 
@@ -35,7 +34,6 @@ export default function PianoPage() {
   const [activePlaybackNote, setActivePlaybackNote] = useState<number | null>(null);
   const [fadeOutAll, setFadeOutAll] = useState(false);
   const [showWinContent, setShowWinContent] = useState(false);
-  const [audioInitialized, setAudioInitialized] = useState(false);
 
   const router = useRouter();
   const APPEND_ON_ERROR = true;
@@ -95,7 +93,6 @@ export default function PianoPage() {
       }
 
       samplerRef.current = pianoSampler;
-      setSampler(pianoSampler);
 
       setIsLoading(false);
       requestAnimationFrame(() => setShowContent(true));
@@ -173,7 +170,6 @@ export default function PianoPage() {
     if (context.state !== 'running') {
       try {
         await start();
-        setAudioInitialized(true);
       } catch {
         return;
       }
@@ -208,7 +204,13 @@ export default function PianoPage() {
     } catch {}
   };
 
-  const renderNoteLabel = ({ midiNumber, isAccidental }: any) => {
+  const renderNoteLabel = ({
+    midiNumber,
+    isAccidental,
+  }: {
+    midiNumber: number;
+    isAccidental: boolean;
+  }) => {
     if (!showHints || isPlayingBack || isWon) return null;
     const attrs = MidiNumbers.getAttributes(midiNumber);
     return (
@@ -373,9 +375,7 @@ export default function PianoPage() {
               {isPlayingBack ? (
                 '🎵 Cabbage Song'
               ) : (
-                <>
-                  🔊 Make sure to turn on your audio!
-                </>
+                <>🔊 Make sure to turn on your audio!</>
               )}
             </p>
           </div>
@@ -465,8 +465,8 @@ export default function PianoPage() {
                   <div className="text-4xl sm:text-6xl mb-4">🎉🥬🎉</div>
                   <h2 className="text-2xl sm:text-3xl font-extrabold text-[#2f6f3e] mb-4">Correct!</h2>
                   <p className="text-[#5c4033] mb-6">
-                    I wanted to give you a musical puzzle too! This was supposed to be a bass guitar but it's a lot more
-                    complex to do. As for why cabbage... cause veggies... and it's long enough HAHA!
+                    I wanted to give you a musical puzzle too! This was supposed to be a bass guitar but it&apos;s a lot
+                    more complex to do. As for why cabbage... cause veggies... and it&apos;s long enough HAHA!
                   </p>
 
                   <button
