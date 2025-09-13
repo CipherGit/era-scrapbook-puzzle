@@ -34,9 +34,6 @@ export default function PianoPage() {
   const [showWinContent, setShowWinContent] = useState(false);
   const [audioInitialized, setAudioInitialized] = useState(false);
 
-  // Staged fade-in for the win overlay (after piano fade completes)
-
-  // Optional: choose whether to show the incorrect note in the sequence before reset
   const APPEND_ON_ERROR = true;
 
   // Track timeouts to clear on unmount
@@ -66,10 +63,11 @@ export default function PianoPage() {
     };
   }, []);
 
-  // Calculate piano width based on screen size
+  // Calculate piano width based on screen size and orientation
   const pianoWidth = useMemo(() => {
-    const padding = 32; // Account for container padding
-    const maxWidth = Math.min(windowWidth - padding, 600); // Never exceed 600px
+    // Always use constrained width approach
+    const padding = 64; // Account for container padding + piano container padding
+    const maxWidth = Math.min(windowWidth - padding, 500); // Reduced max width for better constraint
     return Math.max(maxWidth, 280); // Minimum 280px for usability
   }, [windowWidth]);
 
@@ -125,7 +123,6 @@ export default function PianoPage() {
       samplerRef.current?.dispose();
       samplerRef.current = null;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleError = () => {
@@ -268,122 +265,151 @@ export default function PianoPage() {
   };
 
   return (
-    <div className="relative min-h-screen flex flex-col items-center justify-center bg-gray-100 p-4 sm:p-8">
-      <h1
-        className={`text-2xl sm:text-4xl font-bold text-gray-800 mb-4 sm:mb-8 text-center transition-all duration-700 ${
-          showContent && !fadeOutAll ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'
-        }`}
-      >
-        ASK the KEY in the pages!
-      </h1>
-
-      {/* Loading message */}
-      {isLoading && (
-        <div className="text-lg sm:text-xl text-gray-600 animate-pulse absolute">Loading piano sounds...</div>
-      )}
-
-      {/* Audio enable prompt for Safari/iOS */}
-      {!isLoading && !audioInitialized && (
-        <div className="text-center mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-          <p className="text-yellow-800 text-sm sm:text-base mb-2">
-            🔊 Tap any piano key to enable audio
-          </p>
-          <p className="text-yellow-600 text-xs">
-            (Required for Safari and mobile browsers)
-          </p>
-        </div>
-      )}
-
-      {/* Piano container */}
-      <div
-        className={`bg-white rounded-2xl shadow-2xl px-4 sm:px-8 py-8 sm:py-16 transition-all duration-1000 delay-700 ${
-          !isLoading && showContent && !fadeOutAll
-            ? 'opacity-100 translate-y-0 scale-100'
-            : 'opacity-0 translate-y-8 scale-95'
-        }`}
-      >
-        <div style={{ width: pianoWidth, height: pianoWidth < 400 ? 150 : 200 }}>
-          <Piano
-            noteRange={{ first: firstNote, last: lastNote }}
-            playNote={playNote}
-            stopNote={stopNote}
-            width={pianoWidth}
-            disabled={isLoading}
-            keyboardShortcuts={keyboardShortcuts}
-            renderNoteLabel={renderNoteLabel}
-            activeNotes={activePlaybackNote ? [activePlaybackNote] : []}
-          />
-        </div>
-      </div>
-
-      {/* Game display */}
-      {!isWon && (
+    <div className="relative min-h-screen bg-gray-100 p-4 sm:p-8">
+      <div className="max-w-2xl mx-auto space-y-6">
+        
+        {/* 1. Header Text - First to appear (2 lines) */}
         <div
-          className={`mt-4 sm:mt-8 text-center transition-all duration-700 delay-1000 px-4 ${
-            !isLoading && showContent && !fadeOutAll ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'
+          className={`text-center transition-all duration-700 ${
+            showContent && !fadeOutAll ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'
           }`}
         >
-          {/* Notes sequence */}
-          <div
-            className={`text-2xl sm:text-4xl font-bold mb-4 min-h-[2rem] sm:min-h-[3rem] transition-all duration-300 ${
-              isFadingOut ? 'opacity-0 translate-y-2' : 'opacity-100 translate-y-0'
-            } ${getDisplayColor()}`}
-          >
-            {playedNotes.map((note, index) => (
-              <span
-                key={`${note}-${index}`}
-                className="inline-block transition-opacity duration-300"
-                style={{ animationDelay: `${index * 50}ms` }}
-              >
-                {note}
-                {index < playedNotes.length - 1 ? <span className="mx-1 text-gray-400">·</span> : null}
-              </span>
-            ))}
-          </div>
-
-          <p className="text-sm sm:text-base text-gray-600 mb-4">
-            {isPlayingBack ? 'Playing back your success!' : 'Click the keys or use the home row.'}
-          </p>
-
-          {/* Hints toggle — hidden during playback and after win */}
-          {!isPlayingBack && !isWon && (
-            <div>
-              <button
-                onClick={() => setShowHints((v) => !v)}
-                className={`px-3 sm:px-4 py-2 rounded-2xl font-semibold transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 text-sm sm:text-base ${
-                  showHints
-                    ? 'bg-orange-500 hover:bg-orange-600 text-white focus:ring-orange-400'
-                    : 'bg-blue-500 hover:bg-blue-600 text-white focus:ring-blue-400'
-                }`}
-                aria-pressed={showHints}
-                aria-label={showHints ? 'Hide note labels' : 'Show note labels'}
-              >
-                {showHints ? 'Hide Hints' : 'Show Hints'}
-              </button>
-              <p className="text-xs sm:text-sm text-gray-500 mt-2">
-                Toggle between keyboard shortcuts and note names!
-              </p>
-            </div>
-          )}
+          <h1 className="text-2xl sm:text-4xl font-bold text-gray-800 leading-tight">
+            ASK for the KEY<br />within the Pages!
+          </h1>
         </div>
-      )}
 
-      {/* Win screen — centered overlay; fades in after piano fades out */}
-      {isWon && (
-        <div className="absolute inset-0 flex items-center justify-center p-4">
+        {/* 2. Note Sequence Card - Second to appear */}
+        <div
+          className={`transition-all duration-700 delay-300 ${
+            showContent && !fadeOutAll ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'
+          }`}
+        >
+          <div className="bg-white rounded-xl shadow-lg p-6 min-h-[100px] flex items-center justify-center">
+            {!isWon ? (
+              <div
+                className={`text-center transition-all duration-300 ${
+                  isFadingOut ? 'opacity-0 translate-y-2' : 'opacity-100 translate-y-0'
+                } ${getDisplayColor()}`}
+              >
+                <div className="text-3xl sm:text-4xl font-bold mb-2 min-h-[3rem] flex items-center justify-center">
+                  {playedNotes.length > 0 ? (
+                    playedNotes.map((note, index) => (
+                      <span
+                        key={`${note}-${index}`}
+                        className="inline-block transition-opacity duration-300"
+                        style={{ animationDelay: `${index * 50}ms` }}
+                      >
+                        {note}
+                        {index < playedNotes.length - 1 ? <span className="mx-1 text-gray-400">·</span> : null}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-gray-400 text-xl">Your sequence will appear here...</span>
+                  )}
+                </div>
+              </div>
+            ) : null}
+          </div>
+        </div>
+
+        {/* Loading message overlay */}
+        {isLoading && (
+          <div className="fixed inset-0 flex items-center justify-center bg-gray-100 bg-opacity-90 z-50">
+            <div className="text-lg sm:text-xl text-gray-600 animate-pulse">Loading piano sounds...</div>
+          </div>
+        )}
+
+        {/* 3. Piano - Third to appear (with card effects) */}
+        <div
+          className={`transition-all duration-1000 delay-700 ${
+            !isLoading && showContent && !fadeOutAll
+              ? 'opacity-100 translate-y-0 scale-100'
+              : 'opacity-0 translate-y-8 scale-95'
+          }`}
+        >
+          <div className="bg-white rounded-xl shadow-lg py-8 sm:py-16 px-4 sm:px-8">
+            <div className="flex justify-center">
+              <div style={{ width: pianoWidth, height: pianoWidth < 400 ? 150 : 200 }}>
+                <Piano
+                  noteRange={{ first: firstNote, last: lastNote }}
+                  playNote={playNote}
+                  stopNote={stopNote}
+                  width={pianoWidth}
+                  disabled={isLoading}
+                  keyboardShortcuts={keyboardShortcuts}
+                  renderNoteLabel={renderNoteLabel}
+                  activeNotes={activePlaybackNote ? [activePlaybackNote] : []}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 4. Instructions - Fourth to appear (2 lines with emoji) */}
+        {!isWon && (
           <div
-            className={`bg-green-100 rounded-2xl p-6 sm:p-8 max-w-md mx-auto shadow text-center transition-all duration-1000 ${
-              showWinContent ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-3 scale-95'
+            className={`text-center transition-all duration-700 delay-1000 ${
+              !isLoading && showContent && !fadeOutAll ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'
             }`}
           >
-            <div className="text-4xl sm:text-6xl mb-4">🎉🥬🎉</div>
-            <h2 className="text-2xl sm:text-3xl font-bold text-green-800 mb-4">Congratulations!</h2>
-            <p className="text-sm sm:text-base text-green-700 mb-6">
-              You successfully played the secret sequence and spelled &quot;CABBAGE&quot;!
+            <p className="text-sm sm:text-base text-gray-600 mb-4 leading-relaxed">
+              {isPlayingBack 
+                ? '🎵 Playing back your success!' 
+                : (
+                  <>
+                    🔊 Click on the keys to play<br />
+                    and make sure to turn on your audio!
+                  </>
+                )
+              }
             </p>
           </div>
-        </div>
-      )}
+        )}
+
+        {/* 5. Show Hints Button - Fifth to appear */}
+        {!isWon && !isPlayingBack && (
+          <div
+            className={`text-center transition-all duration-700 delay-1200 ${
+              !isLoading && showContent && !fadeOutAll ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'
+            }`}
+          >
+            <button
+              onClick={() => setShowHints((v) => !v)}
+              className={`px-3 sm:px-4 py-2 rounded-2xl font-semibold transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 text-sm sm:text-base ${
+                showHints
+                  ? 'bg-orange-500 hover:bg-orange-600 text-white focus:ring-orange-400'
+                  : 'bg-blue-500 hover:bg-blue-600 text-white focus:ring-blue-400'
+              }`}
+              aria-pressed={showHints}
+              aria-label={showHints ? 'Hide note labels' : 'Show note labels'}
+            >
+              {showHints ? 'Hide Hints' : 'Show Hints'}
+            </button>
+            <p className="text-xs sm:text-sm text-gray-500 mt-2">
+              Toggle between keyboard shortcuts and note names!
+            </p>
+          </div>
+        )}
+
+        {/* Win screen — centered overlay; fades in after piano fades out */}
+        {isWon && (
+          <div className="fixed inset-0 flex items-center justify-center p-4 z-50">
+            <div
+              className={`bg-green-100 rounded-2xl p-6 sm:p-8 max-w-md mx-auto shadow-2xl text-center transition-all duration-1000 ${
+                showWinContent ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-3 scale-95'
+              }`}
+            >
+              <div className="text-4xl sm:text-6xl mb-4">🎉🥬🎉</div>
+              <h2 className="text-2xl sm:text-3xl font-bold text-green-800 mb-4">Congratulations!</h2>
+              <p className="text-sm sm:text-base text-green-700 mb-6">
+                You successfully played the secret sequence and spelled &quot;CABBAGE&quot;!
+              </p>
+            </div>
+          </div>
+        )}
+
+      </div>
     </div>
   );
 }
