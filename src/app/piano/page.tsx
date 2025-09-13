@@ -6,11 +6,11 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Piano, KeyboardShortcuts, MidiNumbers } from 'react-piano';
 import 'react-piano/dist/styles.css';
 import { Sampler, start, loaded, context } from 'tone';
-import { caveat } from '../fonts'; // Caveat (400/700) from src/app/fonts.ts
+import { caveat } from '../fonts';
+import { useRouter } from 'next/navigation';
 
 const TARGET_SEQUENCE = ['C', 'A', 'B', 'B', 'A', 'G', 'E']; // CABBAGE
 
-// Minimal roots; Tone.Sampler will pitch-shift others.
 const SAMPLE_URLS: Record<string, string> = {
   C3: 'https://tonejs.github.io/audio/salamander/C3.mp3',
   'D#3': 'https://tonejs.github.io/audio/salamander/Ds3.mp3',
@@ -25,7 +25,7 @@ export default function PianoPage() {
   const [windowWidth, setWindowWidth] = useState<number>(600);
 
   const [isLoading, setIsLoading] = useState(true);
-  const [showContent, setShowContent] = useState(false); // flip right after loading
+  const [showContent, setShowContent] = useState(false);
   const [playedNotes, setPlayedNotes] = useState<string[]>([]);
   const [isError, setIsError] = useState(false);
   const [isFadingOut, setIsFadingOut] = useState(false);
@@ -37,9 +37,9 @@ export default function PianoPage() {
   const [showWinContent, setShowWinContent] = useState(false);
   const [audioInitialized, setAudioInitialized] = useState(false);
 
+  const router = useRouter();
   const APPEND_ON_ERROR = true;
 
-  // timeouts cleanup
   const timeouts = useRef<number[]>([]);
   const pushTimeout = (cb: () => void, ms: number) => {
     const id = window.setTimeout(cb, ms);
@@ -47,13 +47,13 @@ export default function PianoPage() {
     return id;
   };
 
-  // responsive width
   useEffect(() => {
     const handleResize = () => setWindowWidth(window.innerWidth);
     setWindowWidth(window.innerWidth);
     window.addEventListener('resize', handleResize);
+    router.prefetch('/photo'); // prefetch next challenge route
     return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  }, [router]);
 
   const pianoWidth = useMemo(() => {
     const padding = 64;
@@ -61,7 +61,6 @@ export default function PianoPage() {
     return Math.max(maxWidth, 280);
   }, [windowWidth]);
 
-  // note range & shortcuts
   const firstNote = useMemo(() => MidiNumbers.fromNote('c3'), []);
   const lastNote = useMemo(() => MidiNumbers.fromNote('c4'), []);
   const keyboardShortcuts = useMemo(
@@ -98,10 +97,7 @@ export default function PianoPage() {
       samplerRef.current = pianoSampler;
       setSampler(pianoSampler);
 
-      // loading finished
       setIsLoading(false);
-
-      // next tick: flip showContent so existing sections can animate from opacity-0 -> 100
       requestAnimationFrame(() => setShowContent(true));
     };
 
@@ -235,16 +231,64 @@ export default function PianoPage() {
     return 'text-[#5c4033]';
   };
 
-  // helper: returns classes for visible vs hidden state
   const appear = (visible: boolean) =>
     `transition-all ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5 pointer-events-none'}`;
+  const showNow = showContent && !fadeOutAll;
 
-  const showNow = showContent && !fadeOutAll; // once content is allowed to show, and not fading out
+  // Scrolling note strip (no total length revealed)
+  const stripRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!stripRef.current) return;
+    stripRef.current.scrollTo({ left: stripRef.current.scrollWidth, behavior: 'smooth' });
+  }, [playedNotes.length]);
+
+  const renderSequenceStrip = () => {
+    const hasNotes = playedNotes.length > 0;
+
+    return (
+      <div className={`w-full max-w-md mx-auto ${isError ? 'animate-shake' : ''}`}>
+        <div
+          ref={stripRef}
+          className={`relative overflow-x-auto no-scrollbar rounded-full px-3 sm:px-4 py-2 sm:py-3
+                      border-2 ${isError ? 'border-red-400' : 'border-dashed border-[#e0cda9]'}
+                      bg-transparent`}
+          style={{ scrollBehavior: 'smooth' }}
+          aria-live="polite"
+        >
+          <div className="flex items-center gap-2 sm:gap-3 whitespace-nowrap">
+            {hasNotes ? (
+              playedNotes.map((note, idx) => (
+                <span
+                  key={`${note}-${idx}`}
+                  className="inline-flex items-center justify-center px-2 sm:px-3 h-8 sm:h-9 rounded-full
+                             border border-[#c49a6c] bg-white/70 text-[#5c4033] text-sm sm:text-base font-bold
+                             shadow-[2px_3px_0_#c7b08a] animate-fade-in-note select-none"
+                >
+                  {note}
+                </span>
+              ))
+            ) : (
+              <span className="text-[#9c8063] text-sm sm:text-base select-none">
+                Tap the keys to begin <span aria-hidden>♪</span>
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Next challenge navigation (matches home page congrats behavior)
+  const goNext = () => {
+    setShowWinContent(false);
+    pushTimeout(() => {
+      router.push('/photo'); // ← change if your next route differs
+    }, 300);
+  };
 
   return (
     <div className="relative min-h-screen bg-kraft-css p-4 sm:p-8 flex items-center justify-center overflow-x-hidden">
       <div className="max-w-2xl mx-auto space-y-6 w-full">
-
         {/* Loading Overlay */}
         {isLoading && (
           <div className="fixed inset-0 flex items-center justify-center bg-[#f4e1c6]/90 z-50">
@@ -262,7 +306,7 @@ export default function PianoPage() {
           </div>
         )}
 
-        {/* Header (Caveat) — perfectly centered two lines */}
+        {/* Header (Caveat) — centered two lines */}
         <div className={`${appear(showNow)} duration-500 flex justify-center`} aria-hidden={!showNow}>
           <div className="inline-block text-center">
             <span className={`${caveat.className} block text-4xl sm:text-6xl font-bold text-[#5c4033] leading-tight`}>
@@ -274,46 +318,29 @@ export default function PianoPage() {
           </div>
         </div>
 
-        {/* Sequence Card */}
+        {/* Sequence Card (tape) */}
         <div className={`${appear(showNow)} duration-700 delay-300`} aria-hidden={!showNow}>
           <div
             className="
               relative bg-paper-card-css rounded-xl p-6 min-h-[100px]
-              flex items-center justify-center
+              flex flex-col items-center justify-center
               ring-1 ring-[#d2b48c]/60
               shadow-[8px_10px_0_#c7b08a] sm:shadow-[10px_12px_0_#c7b08a] md:shadow-[12px_14px_0_#c7b08a]
             "
           >
             {/* small corner tape */}
             <div className="tape pointer-events-none absolute -top-4 left-6 w-20 h-5 rotate-[-8deg]" />
-            {!isWon ? (
-              <div
-                className={`text-center transition-all duration-300 ${
-                  isFadingOut ? 'opacity-0 translate-y-2' : 'opacity-100 translate-y-0'
-                } ${getDisplayColor()}`}
-              >
-                <div className="text-3xl sm:text-4xl font-bold mb-2 min-h-[3rem] flex items-center justify-center">
-                  {playedNotes.length > 0 ? (
-                    playedNotes.map((note, index) => (
-                      <span
-                        key={`${note}-${index}`}
-                        className="inline-block transition-opacity duration-300"
-                        style={{ animationDelay: `${index * 50}ms` }}
-                      >
-                        {note}
-                        {index < playedNotes.length - 1 ? <span className="mx-1 text-gray-400">·</span> : null}
-                      </span>
-                    ))
-                  ) : (
-                    <span className="text-[#9c8063] text-xl">Your sequence will appear here...</span>
-                  )}
-                </div>
-              </div>
-            ) : null}
+            <div
+              className={`w-full text-center transition-all duration-300 ${
+                isFadingOut ? 'opacity-0 translate-y-2' : 'opacity-100 translate-y-0'
+              } ${getDisplayColor()}`}
+            >
+              {renderSequenceStrip()}
+            </div>
           </div>
         </div>
 
-        {/* Piano Card */}
+        {/* Piano Card (NO tape) */}
         <div className={`${appear(showNow)} duration-1000 delay-700`} aria-hidden={!showNow}>
           <div
             className="
@@ -322,8 +349,6 @@ export default function PianoPage() {
               shadow-[8px_10px_0_#c7b08a] sm:shadow-[10px_12px_0_#c7b08a] md:shadow-[12px_14px_0_#c7b08a]
             "
           >
-            {/* small corner tape */}
-            <div className="tape pointer-events-none absolute -top-4 left-6 w-20 h-5 rotate-[-8deg]" />
             <div className="flex justify-center">
               <div style={{ width: pianoWidth, height: pianoWidth < 400 ? 150 : 200 }}>
                 <Piano
@@ -346,58 +371,116 @@ export default function PianoPage() {
           <div className={`${appear(showNow)} duration-700 delay-1000 text-center`} aria-hidden={!showNow}>
             <p className="text-sm sm:text-base text-[#6b4f3a] mb-4 leading-relaxed">
               {isPlayingBack ? (
-                '🎵 Playing back your success!'
+                '🎵 Cabbage Song'
               ) : (
                 <>
-                  🔊 Click on the keys to play
-                  <br />
-                  and make sure to turn on your audio!
+                  🔊 Make sure to turn on your audio!
                 </>
               )}
             </p>
           </div>
         )}
 
-        {/* Show Hints */}
+        {/* Show Hints — scrapbook-styled chip */}
         {!isWon && !isPlayingBack && (
           <div className={`${appear(showNow)} duration-700 delay-1200 text-center`} aria-hidden={!showNow}>
             <button
               onClick={() => setShowHints((v) => !v)}
-              className={`px-3 sm:px-4 py-2 rounded-2xl font-semibold transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 text-sm sm:text-base ${
-                showHints
-                  ? 'bg-orange-500 hover:bg-orange-600 text-white focus:ring-orange-400'
-                  : 'bg-blue-500 hover:bg-blue-600 text-white focus:ring-blue-400'
-              }`}
               aria-pressed={showHints}
-              aria-label={showHints ? 'Hide note labels' : 'Show note labels'}
+              title={showHints ? 'Hide note labels' : 'Show note labels'}
+              className={[
+                // shared
+                'inline-flex items-center justify-center gap-2 px-4 py-2 rounded-full font-semibold',
+                'transition-all select-none focus:outline-none',
+                'border-2 shadow-[4px_5px_0_#c7b08a]',
+                'active:translate-x-[1px] active:translate-y-[1px] active:shadow-[3px_4px_0_#c7b08a]',
+                'focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#f4e1c6]',
+                // states
+                showHints
+                  ? 'bg-[#2f6f3e] text-[#fffaf0] border-[#2f6f3e] hover:brightness-105 focus:ring-[#9bd2a3]'
+                  : 'bg-white/80 text-[#5c4033] border-[#c49a6c] hover:shadow-[6px_7px_0_#c7b08a] focus:ring-[#c49a6c]',
+                'text-sm sm:text-base',
+              ].join(' ')}
               disabled={!showNow}
             >
+              {/* icon */}
+              {showHints ? (
+                // eye-off
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="mt-[1px]"
+                >
+                  <path d="M17.94 17.94A10.94 10.94 0 0 1 12 20C7 20 2.73 16.11 1 12c.64-1.49 1.6-2.86 2.79-4.03M9.9 4.24A10.94 10.94 0 0 1 12 4c5 0 9.27 3.89 11 8a11.2 11.2 0 0 1-2.34 3.38M1 1l22 22" />
+                  <path d="M14.12 14.12A3 3 0 0 1 9.88 9.88" />
+                </svg>
+              ) : (
+                // eye
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="mt-[1px]"
+                >
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+              )}
               {showHints ? 'Hide Hints' : 'Show Hints'}
             </button>
-            <p className="text-xs sm:text-sm text-[#9c8063] mt-2">Toggle between keyboard shortcuts and note names!</p>
           </div>
         )}
 
-        {/* Win screen */}
+        {/* Win screen — styles matched to home page + next challenge button */}
         {isWon && (
           <div className="fixed inset-0 flex items-center justify-center p-4 z-50">
             <div
-              className={`bg-paper-card-css rounded-2xl p-6 sm:p-8 max-w-md mx-auto ring-1 ring-[#d2b48c]/60
-                          shadow-[12px_14px_0_#c7b08a] sm:shadow-[14px_16px_0_#c7b08a] md:shadow-[16px_18px_0_#c7b08a]
-                          text-center transition-all duration-1000 relative
-                          ${showWinContent ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-3 scale-95'}`}
+              className={`transition-opacity transition-transform duration-800 ease-out ${
+                showWinContent ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 translate-y-2'
+              }`}
             >
-              <div className="tape pointer-events-none absolute -top-6 left-10 w-40 h-7 rotate-[-8deg]" />
-              <div className="tape pointer-events-none absolute -top-7 right-10 w-48 h-7 rotate-[6deg]" />
-              <div className="text-4xl sm:text-6xl mb-4">🎉🥬🎉</div>
-              <h2 className="text-2xl sm:text-3xl font-extrabold text-[#2f6f3e] mb-4">Congratulations!</h2>
-              <p className="text-sm sm:text-base text-[#5c4033] mb-6">
-                You successfully played the secret sequence and spelled &quot;CABBAGE&quot;!
-              </p>
+              <div
+                className="
+                  relative bg-paper-card-css rounded-xl p-6 sm:p-8 max-w-md mx-auto
+                  ring-1 ring-[#d2b48c]/60
+                  shadow-[16px_18px_0_#c7b08a]
+                "
+              >
+                {/* big tapes (match home dialog look) */}
+                <div className="tape pointer-events-none absolute -top-6 left-10 w-40 h-7 rotate-[-8deg]" />
+                <div className="tape pointer-events-none absolute -top-7 right-10 w-48 h-7 rotate-[6deg]" />
+
+                <div className="text-center">
+                  <div className="text-4xl sm:text-6xl mb-4">🎉🥬🎉</div>
+                  <h2 className="text-2xl sm:text-3xl font-extrabold text-[#2f6f3e] mb-4">Correct!</h2>
+                  <p className="text-[#5c4033] mb-6">
+                    I wanted to give you a musical puzzle too! This was supposed to be a bass guitar but it's a lot more
+                    complex to do. As for why cabbage... cause veggies... and it's long enough HAHA!
+                  </p>
+
+                  <button
+                    type="button"
+                    onClick={goNext}
+                    className="px-6 py-3 bg-[#6b4f3a] hover:bg-[#5c4033] text-[#fffaf0] font-semibold rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#c49a6c] focus:ring-offset-2 focus:ring-offset-[#f4e1c6]"
+                  >
+                    Continue to the next challenge 📷
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         )}
-
       </div>
     </div>
   );
