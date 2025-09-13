@@ -92,7 +92,8 @@ export default function PianoPage() {
   useEffect(() => {
     let mounted = true;
 
-    setShowContent(true);
+    // Show content first, but keep loading state
+    pushTimeout(() => setShowContent(true), 100);
 
     const initializeSampler = async () => {
       const pianoSampler = new Sampler({
@@ -109,7 +110,8 @@ export default function PianoPage() {
 
       samplerRef.current = pianoSampler;
       setSampler(pianoSampler);
-      pushTimeout(() => setIsLoading(false), 500);
+      // Give a bit more time to show the loading state
+      pushTimeout(() => setIsLoading(false), 800);
     };
 
     initializeSampler();
@@ -313,10 +315,32 @@ export default function PianoPage() {
           </div>
         </div>
 
-        {/* Loading message overlay */}
+        {/* Enhanced Loading State - Replaces the old loading message */}
         {isLoading && (
-          <div className="fixed inset-0 flex items-center justify-center bg-gray-100 bg-opacity-90 z-50">
-            <div className="text-lg sm:text-xl text-gray-600 animate-pulse">Loading piano sounds...</div>
+          <div className="fixed inset-0 flex items-center justify-center bg-gray-100 bg-opacity-95 z-50">
+            <div className="bg-white rounded-xl shadow-lg p-8 text-center max-w-md mx-4">
+              <div className="flex items-center justify-center gap-3 text-blue-600 mb-4">
+                <svg className="animate-spin h-8 w-8" viewBox="0 0 24 24">
+                  <circle 
+                    className="opacity-25" 
+                    cx="12" 
+                    cy="12" 
+                    r="10" 
+                    stroke="currentColor" 
+                    strokeWidth="4" 
+                    fill="none"
+                  />
+                  <path 
+                    className="opacity-75" 
+                    fill="currentColor" 
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                  />
+                </svg>
+                <span className="text-xl font-semibold">Loading Piano Sounds</span>
+              </div>
+              <p className="text-gray-600 mb-2">Preparing your musical adventure...</p>
+              <p className="text-sm text-gray-500">This may take a moment</p>
+            </div>
           </div>
         )}
 
