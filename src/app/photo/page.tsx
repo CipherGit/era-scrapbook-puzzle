@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useRef, useState, FormEvent } from 'react';
-import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { caveat } from '../fonts';
 
@@ -63,7 +62,6 @@ export default function PhotoPage() {
 
   const inputRef = useRef<HTMLInputElement>(null);
   const timeouts = useRef<number[]>([]);
-  const router = useRouter();
 
   // TODO: replace with your real final answer
   const correctAnswer = '1432';
@@ -117,8 +115,6 @@ export default function PhotoPage() {
       }, 600);
     }
   };
-
-  const restart = () => router.push('/');
 
   const appear = (v: boolean) =>
     `transition-all ${v ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5 pointer-events-none'}`;
@@ -218,11 +214,13 @@ export default function PhotoPage() {
                 <div className="mx-auto max-w-xl">
                   <p className="text-[#5c4033] text-base sm:text-lg leading-relaxed">
                     You did it!! Thank you for playing along and making it this far!
-                    I hope this little puzzle was fun for you to solve as much as it was fun for me to make!
+                    I hope this little puzzle was fun f
+                    
+                    or you to solve as much as it was fun for me to make!
                     I literally spent sleepless nights on this so feedback would be highly appreciated HAHA!
                   </p>
                   <p className="text-[#5c4033] text-base sm:text-lg leading-relaxed mt-3">
-                    Anyway... I've already told you a lot of things from my scuffed grad speech and my novel length telegram messages.
+                    Anyway... I&rsquo;ve already told you a lot of things from my scuffed grad speech and my novel length telegram messages.
                     So this time around, I thought that it would be nice for everyone to say something as well 
                     cause they care about you too hehe! I know the road ahead is tough but I hope the memories we share can give you a happiness boost when you need it! 
                   </p>
