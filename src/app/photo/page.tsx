@@ -13,7 +13,7 @@ type PolaroidSpec = {
 const PHOTOS: PolaroidSpec[] = [
   { src: '/photos/era-1.jpg', alt: 'Also my first public duet with you! 🎤', caption: 'Our First Event in Japan! ✈️' },
   { src: '/photos/era-2.jpg', alt: 'You finally changed your phone!', caption: 'Iphone 16 Pro 📱' },
-  { src: '/photos/era-3.jpg', alt: 'Thank you for always letting me know youre there', caption: 'Soul Pics 📷' },
+  { src: '/photos/era-3.jpg', alt: 'Thank you for always letting me know you\'re there even though we\'re far apart', caption: 'Soul Pics 📷' },
   { src: '/photos/era-4.jpg', alt: 'In this world full of changes, I\'ll be your constant', caption: 'Graduation 🎓' },
 ];
 
@@ -213,16 +213,14 @@ export default function PhotoPage() {
 
                 <div className="mx-auto max-w-xl">
                   <p className="text-[#5c4033] text-base sm:text-lg leading-relaxed">
-                    You did it!! Thank you for playing along and making it this far!
-                    I hope this little puzzle was fun f
-                    
-                    or you to solve as much as it was fun for me to make!
-                    I literally spent sleepless nights on this so feedback would be highly appreciated HAHA!
+                    You did it!! Thank you for playing and making it this far!
+                    I hope this little puzzle was fun for you to solve as much as it was fun for me to make!
+                    Actions speak louder than words so I wanted to show you how much you mean to me... rather than just my usual novel length messages or scuffed speeches HAHA.
                   </p>
                   <p className="text-[#5c4033] text-base sm:text-lg leading-relaxed mt-3">
-                    Anyway... I&rsquo;ve already told you a lot of things from my scuffed grad speech and my novel length telegram messages.
-                    So this time around, I thought that it would be nice for everyone to say something as well 
-                    cause they care about you too hehe! I know the road ahead is tough but I hope the memories we share can give you a happiness boost when you need it! 
+                    This time around though, I thought that it would be nice for everyone to say something as well cause they care about you too hehe! 
+                    Life is tough but I hope the memories we share can give you a happiness boost when you need it!
+                    I do trust that you can definitely conquer the challenges and turn them into wins but dont forget you always have us too  
                   </p>
                 </div>
 
